@@ -111,12 +111,26 @@ app.post('/auth', async (req, res) => {
   });
 });
 
+// LOCKED DOWN CLIENTS ENDPOINT
 app.get('/clients', async (req, res) => {
-  const { data } = await supabase.from('devices').select('*');
+  const wallet = req.query.wallet;
+  
+  // Verifies BOTH the admin=1 parameter AND the actual admin code
+  const isAdmin = req.query.admin === '1' && wallet === ADMIN_CODE; 
+
+  let query = supabase.from('devices').select('*');
+  
+  // If NOT admin, strictly filter to only show their own device
+  if (!isAdmin && wallet) {
+    query = query.eq('user_id', wallet);
+  }
+
+  const { data } = await query;
   const list = (data || []).map(d => ({
     userId: d.user_id, device: d.device, android: d.android,
     online: (ts() - d.last_seen) < 30000
   }));
+  
   res.json({ ok: true, clients: list });
 });
 
